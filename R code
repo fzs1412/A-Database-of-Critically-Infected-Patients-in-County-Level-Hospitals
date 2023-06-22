@@ -1,0 +1,345 @@
+library(data.table)
+library(tidyLPA)
+library(ggplot2)
+#studyhulicom
+study<-fread("D:/R/shujuku/studyhulicom.csv")
+library(reshape)
+study <- rename(study,c(tw = "body.temperature"))  
+study <- rename(study,c(p = "pulse"))  
+study <- rename(study,c(R = "respiration"))  
+study <- rename(study,c(sbp  = "systolic.blood.pressure"))  
+study <- rename(study,c(dbp  = "diastolic.blood.pressure"))  
+ruliang  =data.frame(study$bah,study$jilutime,study$ruliang2)
+chuliang =data.frame(study$bah,study$jilutime,study$chuliang2)
+summary(ruliang)
+ruliang<-na.omit(ruliang)
+chuliang<-na.omit(chuliang)
+write.csv(ruliang,file = "dry_input.csv") 
+write.csv(chuliang,file = "dry_output.csv") 
+
+dat<-fread("D:/R/shujuku/studyhulicom.csv")
+dat_Vitalsigns=  select(dat,c("bah","jilutime","p","R","sbp","dbp","spo2"))
+dat_Temp=  select(dat,c("bah","jilutime","tw"))
+dat_Temp<-na.omit(dat_Temp) 
+write.csv(dat_Temp,file = "dat_Temp.csv")
+
+Vita= select(dat,c("bah","jilutime","tw","p","R","sbp","dbp","spo2"))
+Vita$sbp<-as.numeric(as.character(Vita$sbp))
+Vita$dbp<-as.numeric(as.character(Vita$dbp))
+Vita$spo2<-as.numeric(as.character(Vita$spo2))
+
+Vita$x=is.na(Vita$tw)&is.na(Vita$p)&is.na(Vita$R)&is.na(Vita$sbp)&is.na(Vita$dbp)&is.na(Vita$spo2)
+Vita=Vita[Vita$x==FALSE,]
+dat =  subset(Vita, select=-c(x))
+colnames(dat)=c("Patient_ID","charttime","temperature","pulse","respiratory","sbp","dbp","spo2")
+write.csv(dat,file = "生命体征.csv")
+
+#时间迁移50-100年   替换Patient_ID 为Patient_number
+Patient=fread("D:/R/shujuku/炎症部分/Patient4928.csv")
+seed=8
+qianyi_time=sample(1576800000:3153600000, 4928)
+Patient$Patient_number=c(1:4928)
+Patient$qianyi_time=qianyi_time
+fwrite(Patient, "Patient4928.csv")
+#培养
+dat=fread("D:/R/shujuku/炎症部分/培养4928.csv")
+dat$time_t0=ymd_hms("1900:01:01 00:00:01")
+dat$charttime=dat$time_t0+ (dat$charttime-2)*24*3600      
+dat=merge(dat,Patient,by = 'Patient_ID') 
+dat$charttime=dat$charttime+ dat$qianyi_time
+dat=  select(dat,-c("Patient_ID","time_t0","qianyi_time"))
+fwrite(dat, "培养4928.csv")
+#检验
+dat=fread("D:/R/shujuku/炎症部分/检验datcom4928.csv")
+dat$time_t0=ymd_hms("1900:01:01 00:00:01")
+dat$charttime<-as.numeric(as.character(dat$charttime))
+dat$charttime=dat$time_t0+ (dat$charttime-2)*24*3600      
+dat=merge(dat,Patient,by = 'Patient_ID') 
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$charttime=dat$charttime+ dat$qianyi_time
+dat=  select(dat,-c("Patient_ID","time_t0","qianyi_time"))
+fwrite(dat, "检验datcom4928.csv")
+#yao
+dat=fread("D:/R/shujuku/炎症部分/yao4928.csv")
+dat$time_t0=ymd_hms("1900:01:01 00:00:01")
+dat$start_time=dat$time_t0+ (dat$start_time-2)*24*3600      
+dat$end_time=dat$time_t0+ (dat$end_time-2)*24*3600     
+dat=merge(dat,Patient,by = 'Patient_ID') 
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$start_time=dat$start_time+ dat$qianyi_time
+dat$end_time=dat$end_time+ dat$qianyi_time
+dat=  select(dat,-c("Patient_ID","time_t0","qianyi_time","V1"))
+fwrite(dat, "yao4928.csv")
+#生命体征4928.csv")
+dat=fread("D:/R/shujuku/炎症部分/生命体征4928.csv")
+dat=merge(dat,Patient,by = 'Patient_ID') 
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$charttime=dat$charttime+ dat$qianyi_time
+dat=  select(dat,-c("Patient_ID","qianyi_time"))
+fwrite(dat, "生命体征4928.csv")
+#输血 出入量合并
+SX=fread("D:/R/shujuku/炎症部分/输血.csv")
+crl=fread("D:/R/shujuku/炎症部分/出入量.csv")
+dat=rbind(SX,crl)
+dat=merge(dat,Patient,by = 'Patient_ID') 
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$charttime=dat$charttime+ dat$qianyi_time
+dat=  select(dat,-c("Patient_ID","qianyi_time"))
+fwrite(dat, "输血出入量4928.csv")
+
+#病人com4928  age转化
+dat=fread("D:/R/shujuku/炎症部分/病人com4928.csv")
+dat=merge(dat,Patient,by = 'Patient_ID') 
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$ICU.start.time<-ymd_hms(dat$ICU.start.time)
+dat$ICU.end.time<-ymd_hms(dat$ICU.end.time)
+dat$Ventilator.start.time<-ymd_hms(dat$Ventilator.start.time)
+dat$Ventilator.end.time<-ymd_hms(dat$Ventilator.end.time)
+dat$admission.time<-ymd_hms(dat$admission.time)
+dat$Discharge.time<-ymd_hms(dat$Discharge.time)
+dat$Surgery.start.time<-ymd_hms(dat$Surgery.start.time)
+dat$Surgery.end.time<-ymd_hms(dat$Surgery.end.time)
+
+dat$ICU.start.time=dat$ICU.start.time+ dat$qianyi_time
+dat$ICU.end.time<- dat$ICU.end.time+ dat$qianyi_time
+dat$Ventilator.start.time<- dat$Ventilator.start.time+ dat$qianyi_time
+dat$Ventilator.end.time<- dat$Ventilator.end.time+ dat$qianyi_time
+dat$admission.time<- dat$admission.time+ dat$qianyi_time
+dat$Discharge.time<- dat$Discharge.time+ dat$qianyi_time
+dat$Surgery.start.time<- dat$Surgery.start.time+ dat$qianyi_time
+dat$Surgery.end.time<- dat$Surgery.end.time+ dat$qianyi_time
+dat=  select(dat,-c("Patient_ID","qianyi_time"))
+#age
+ageCat<−cut(datage, breaks = c(seq(10, 90, by = 10), 110),
+labels = c("(10,19)", "(20,29)", "(30,39)", "(40,49)",
+"(50,59)", "(60,69)", "(70,79)", "(80,89)", "(90,110)"))
+
+#table2   baseline
+Patient=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/病人com4928数字化.csv")
+
+dat = subset(Patient, select=c(ageCat,gender,Hypertension,Diabete,
+                               APACHEII,ICU.start.time,ICU.end.time,
+                               Surgery.start.time,hos_day,
+                               fate)) 
+dat$icustay=dat$ICU.end.time-dat$ICU.start.time
+dat$icustay=dat$icustay/60/24
+dat$Surgery=ifelse(dat$Surgery.start.time>0,1,0 )
+dat$Surgery[is.na(dat$Surgery)] <-  0 
+
+#table 3 Diagnosis
+ 
+dat<-read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/病案首页.xlsx") 
+colnames(dat)=c("ID","EMPI","Diagnosis_Desc","ICD10_code",
+                "ICD10_name")
+Patient=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Patient4928.csv")
+icutime=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/icutime4928.csv")
+icutime = subset(icutime, select=c(EMPI,Patient_ID)) 
+Patient=merge(Patient,icutime,by = 'Patient_ID')
+dat=merge(dat,Patient,by = 'EMPI')
+
+df<-read.xlsx("C:/Users/lxqji/OneDrive/R/drydata/ICU数据库20220112原版诊断.xlsx")
+df=df[complete.cases(df$Diagnosis),] 
+colnames(df)=c("hos_number","Diagnosis_Desc")
+dat=merge(dat,df,by = 'Diagnosis_Desc')
+dat = subset(dat, select=c(Patient_number,Diagnosis_Desc,
+                           ICD10_code,ICD10_name)) 
+fwrite(dat, "Table3Diagnosis4928.csv")
+
+#table4 
+icutime=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/icutime4928.csv")
+#table5 入院记录
+# ChiefComplain Med_history  PastHistory
+dat<-read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/入院记录.xlsx") 
+#merge入院时间
+df<-read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/22.1.3乐九脓毒症数据库原版1.xlsx") 
+df = subset(df, select=c(病人唯一识别码,入院时间)) 
+dat=merge(dat,df,by = '入院时间')
+
+dat = subset(dat, select=c(EMPI,主诉,现病史,既往史,个人史,
+                           家族史,体格检查,专科检查,辅助检查,婚育史)) 
+
+colnames(dat)=c("EMPI","ChiefComplain","Present_illness_history",
+                "Past_medical_history","Personal_history","Family_history",
+                "Physical_examination","Special_examination"
+                ,"Ancillary_examination","Obstetric_history")
+
+Patient=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Patient4928.csv")
+icutime=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/icutime4928.csv")
+icutime = subset(icutime, select=c(EMPI,Patient_ID)) 
+Patient=merge(Patient,icutime,by = 'Patient_ID')
+dat=merge(dat,Patient,by = 'EMPI')
+dat = subset(dat, select=-c(qianyi_time,Patient_ID,EMPI)) 
+
+regex <- "((\\d{4}[./年-]?\\d{1,2}[./月-]?\\d{0,2}[日]?)|(\\d{1,2}[-/]\\d{1,2}[-/]\\d{4}))"
+dat$Present_illness_history <- sapply(dat$Present_illness_history, function(x) gsub(regex, "*", x))
+dat$Ancillary_examination <- sapply(dat$Ancillary_examination, function(x) gsub(regex, "*", x))
+dat$Past_medical_history <- sapply(dat$Past_medical_history, function(x) gsub(regex, "*", x))
+write.csv(dat,file = "Table5Admission_Record.csv")
+#table6 
+#TransferIn_dateTime  TransferOut_dateTime
+#TransferTo_Dept_Eng  TransferFrom_Dept_Eng
+dat<-read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/转科记录.xlsx")
+#icu
+dat$icu=ifelse(str_detect(dat$转出科室,"ICU"),1,0)
+dat$icu=ifelse(str_detect(dat$转入科室,"ICU"),1,dat$icu)
+dat$icu=ifelse(str_detect(dat$转入科室,"重症医学"),1,dat$icu)
+dat$icu = ifelse(str_detect(dat$转出科室, "重症医学"), 1, dat$icu)
+dat=dat[dat$icu==1,]
+#google
+chu=read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/翻译/chu.xlsx")
+ru=read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/翻译/ru.xlsx")
+dat=merge(dat,chu,by = '转出科室',all.x = TRUE)
+dat=merge(dat,ru,by = '转入科室',all.x = TRUE)
+
+Patient=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Patient4928.csv")
+icutime=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/icutime4928.csv")
+icutime = subset(icutime, select=c(EMPI,Patient_ID)) 
+Patient=merge(Patient,icutime,by = 'Patient_ID')
+dat=merge(dat,Patient,by = 'EMPI')
+dat = subset(dat, select=c(Patient_number,qianyi_time,ru,chu,
+                           转出时间,转入时间 )) 
+colnames(dat)=c("Patient_ID","qianyi_time","TransferTo_Dept_Eng",
+                "TransferFrom_Dept_Eng","TransferIn_dateTime","Transferout_dateTime"
+)
+dat$time_t0=ymd_hms("1900:01:01 00:00:01")
+dat$TransferIn_dateTime=dat$time_t0+ (dat$TransferIn_dateTime-2)*24*3600
+dat$Transferout_dateTime=dat$time_t0+ (dat$Transferout_dateTime-2)*24*3600
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$TransferIn_dateTime=dat$TransferIn_dateTime+ dat$qianyi_time
+dat$Transferout_dateTime=dat$Transferout_dateTime+ dat$qianyi_time
+dat=  select(dat,-c("time_t0","qianyi_time"))
+write.csv(dat,file = "Table6HospitalTransfer4928.csv")
+#table7 MechanicalVentilation
+dat<-read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/呼吸机参数.xlsx")
+colnames(dat)=c("ID","time","mode","Frequency","VT","Monitored_VT","FiO2",
+                "PS","PC","PIP","PEEP","EMPI") 
+#time
+Patient=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Patient4928.csv")
+icutime=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/icutime4928.csv")
+icutime = subset(icutime, select=c(EMPI,Patient_ID)) 
+Patient=merge(Patient,icutime,by = 'Patient_ID')
+dat=merge(dat,Patient,by = 'EMPI')
+dat$time_t0=ymd_hms("1900:01:01 00:00:01")
+dat$time=dat$time_t0+ (dat$time-2)*24*3600
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$time=dat$time+ dat$qianyi_time
+dat=  select(dat,-c("time_t0","qianyi_time","EMPI",
+                    "ID","Patient_ID"))
+
+write.csv(dat,file = "Table7MechanicalVentilation4928.csv")
+
+#8 inputOutput
+dat=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/输血出入量4928.csv")
+dat=dat[dat$item=="input"|dat$item=="output"|dat$item=="uo",]
+names(dat)[4] <- "Patient_ID"
+fwrite(dat, "Table8inputOutput4928.csv")
+#9输血
+shuxue=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/输血出入量4928.csv")
+shuxue=shuxue[shuxue$item=="FFP   "|shuxue$item=="PLT    "|shuxue$item=="RBC      ",]
+names(shuxue)[4] <- "Patient_ID"
+fwrite(shuxue, "Table9shuxue4928.csv")
+
+#10 lab  
+dat=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/检验datcom4928.csv")
+names(dat)
+head(dat$item$creatinine.enzymatic.method,8)
+table(dat$item)
+dat=fread("C:/Users/lxqji/OneDrive/R/drydata/检验datcom2.csv")
+#Normal_values Unit_measure
+dat1=dat %>% distinct(item, .keep_all = TRUE)
+write.csv(dat1,file = "lab正常范围.csv")
+ 
+dat1=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/其他/lab正常范围.csv")
+dat=merge(dat,dat1,by = 'item',all.x = TRUE)
+fwrite(dat, "Table10lab4928.csv")
+
+#11 yao
+dat=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/yaocom4928.csv")
+names(dat)[7] <- "Patient_ID"
+fwrite(dat, "Table11yao4928.csv")
+
+#12 Microbiology culture
+dat=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Table12培养4928.csv")
+
+#Table13   ExamReport
+##ExamReport_Category ExamReport_DESC ExamReport_finding
+#ExamReport_time  ExamReport_item_Eng
+dat<-read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/影像报告.xlsx") 
+
+colnames(dat)=c("EMPI","ID","ExamReport_time","ExamReport_item_Eng",
+                "ExamReport_Category","ExamReport_DESC","ExamReport_finding") 
+
+dat$ExamReport_Category=ifelse(dat$ExamReport_Category=="超声","US",
+                               dat$ExamReport_Category)
+dat$ExamReport_Category=ifelse(dat$ExamReport_Category=="内镜","Endo",
+                               dat$ExamReport_Category)
+dat$ExamReport_Category=ifelse(dat$ExamReport_Category=="心电图","ECG",
+                               dat$ExamReport_Category)
+#google 
+ExamReport=dat %>% distinct(ExamReport_item_Eng, .keep_all = TRUE)
+write.csv(ExamReport,file = "ExamReport.csv")
+#google 
+ExamReport=read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/翻译/ExamReport.xlsx")
+dat=merge(dat,ExamReport,by = 'ExamReport_item_Eng',all.x = TRUE)
+
+Patient=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Patient4928.csv")
+icutime=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/icutime4928.csv")
+icutime = subset(icutime, select=c(EMPI,Patient_ID)) 
+Patient=merge(Patient,icutime,by = 'Patient_ID')
+dat=merge(dat,Patient,by = 'EMPI')
+dat$time_t0=ymd_hms("1900:01:01 00:00:01")
+dat$ExamReport_time=dat$time_t0+ (dat$ExamReport_time-2)*24*3600
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$ExamReport_time=dat$ExamReport_time+ dat$qianyi_time
+
+dat=  select(dat,-c("time_t0","qianyi_time","EMPI","ExamReport_item_Eng",
+                    "ID","Patient_ID"))
+colnames(dat)=c("ExamReport_time","ExamReport_Category",
+                "ExamReport_DESC","ExamReport_finding",
+                "ExamReport_item_Eng","Patient_number")
+
+write.csv(dat,file = "Table13ExamReport4928.csv")
+
+#Table14  
+##MedOrder_Type MedOrder_DESC  MedOrder_Start_Time MedOrder_End_Time
+dat<-read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/医嘱记录.xlsx")
+dat = subset(dat, select=c(EMPI,开始时间,结束时间,医嘱内容,医嘱类型,医嘱分类)) 
+colnames(dat)=c("EMPI","MedOrder_Start_Time","MedOrder_End_Time",
+                "MedOrder_DESC","MedOrder_Type","MedOrder_classification")
+
+Patient=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Patient4928.csv")
+icutime=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/icutime4928.csv")
+icutime = subset(icutime, select=c(EMPI,Patient_ID)) 
+Patient=merge(Patient,icutime,by = 'Patient_ID')
+dat=merge(dat,Patient,by = 'EMPI')
+
+dat$time_t0=ymd_hms("1900:01:01 00:00:01")
+dat$MedOrder_Start_Time=dat$time_t0+ (dat$MedOrder_Start_Time-2)*24*3600
+dat$MedOrder_End_Time=dat$time_t0+ (dat$MedOrder_End_Time-2)*24*3600
+str(dat)
+
+dat$qianyi_time<-as.numeric(as.character(dat$qianyi_time))
+dat$MedOrder_Start_Time=dat$MedOrder_Start_Time+ dat$qianyi_time
+dat$MedOrder_End_Time=dat$MedOrder_End_Time+ dat$qianyi_time
+dat=  select(dat,-c("EMPI","Patient_ID","time_t0","qianyi_time"))
+#处理中文
+table(dat$MedOrder_Type) 
+#Temporary Long_term
+dat$MedOrder_Type=ifelse(dat$MedOrder_Type=="临时","Temporary","Long_term")
+#
+classification=dat %>% distinct(MedOrder_classification, .keep_all = TRUE)
+DESC=dat %>% distinct(MedOrder_DESC, .keep_all = TRUE)
+write.csv(classification,file = "classification.csv")
+write.csv(DESC,file = "DESC.csv")
+#google
+classification=read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/医嘱翻译classification.xlsx")
+DESC=read.xlsx("C:/Users/lxqji/OneDrive/R/数据库文章/医嘱翻译DESC.xlsx")
+dat=merge(dat,classification,by = 'MedOrder_classification',all.x = TRUE)
+dat=merge(dat,DESC,by = 'MedOrder_DESC',all.x = TRUE)
+dat$MedOrder_DESC=dat$fy2
+dat$MedOrder_classification=dat$fy
+dat=  select(dat,-c("fy","fy2"))
+write.csv(dat,file = "Table14MedOrder4928.csv")
+#Table15 Vital_Sign
+dat=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Table15Vital_Sign4928.csv")
+
