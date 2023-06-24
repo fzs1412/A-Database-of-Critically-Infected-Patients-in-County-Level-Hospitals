@@ -343,3 +343,150 @@ write.csv(dat,file = "Table14MedOrder4928.csv")
 #Table15 Vital_Sign
 dat=fread("C:/Users/lxqji/OneDrive/R/数据库文章/炎症部分/Table15Vital_Sign4928.csv")
 
+#figure
+library(ggplot2)
+library(tidyverse)
+data <- data.frame(
+  Day = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14),
+  WBC = c(11.19, NA, 14.42, 15.81, 19.9, 21.68, 21.3, 21.8, 21.17, 22.75, 22.59, 20.36, NA, 10.86),
+  CRP = c(157.5, 175.4, 173.5, 160.3, 135.3, 116.7, 98, 98.6, 111.8, 128.7, 138.2, 86, NA, NA),
+  PCT = c(53.4, 38.9, 22, 19.3, NA, 12.8, 20.1, 19.6, 20.91, NA, NA, NA, NA, NA),
+  BodyTemp = c(36.6, 37.5, 36.3, 36.3, 36.9, 36.5, 36.6, 36.7, 36.8, 37.1, 37.2, 37.2, 36.9, 37.1)
+)
+data_long <- data %>%
+  pivot_longer(cols = -Day, names_to = "Variable", values_to = "Value")
+
+
+  pub_theme <- theme_bw() + 
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(colour = "black", fill = NA),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 12),
+    legend.key.size = unit(1, "cm"),
+    plot.title = element_text(size = 16, hjust = 0.5)
+  )
+
+  ggplot(data_long, aes(x = Day, y = Value, colour = Variable)) +
+    geom_line(size = 1) +
+    geom_point(size = 3) +
+    scale_y_continuous(sec.axis = sec_axis(~ . / 10, name = "PCT (ng/mL) & Body Temp (°C)")) +
+    scale_x_continuous(breaks = seq(1, 14, by = 1), limits = c(1, 14)) +
+    labs(x = "ICU Days",
+         y = "WBC (x10^9/L) & CRP (mg/L)",
+         title = "Medical Data Over Time") +
+    pub_theme
+  
+
+  
+  ggplot(data_long, aes(x = Day, y = Value, colour = Variable)) +
+    geom_line(size = 1) +
+    geom_point(size = 3) +
+    scale_y_continuous(sec.axis = sec_axis(~ . / 10, name = "PCT (ng/mL) & Body Temp (°C)")) +
+    scale_x_continuous(breaks = seq(1, 14, by = 1), limits = c(1, 14)) +
+    labs(x = "ICU Day",
+         y = "WBC (x10^9/L) & CRP (mg/L)",
+         title = "Medical Data Over Time") +
+    geom_point(aes(x = 1, y = max(data_long$Value, na.rm = TRUE) * 0.7), color = "blue", size = 3) +
+    geom_point(aes(x = 3, y = max(data_long$Value, na.rm = TRUE) * 0.5), color = "red", size = 3) +
+    annotate("text", x = 1, y = max(data_long$Value, na.rm = TRUE) * 0.7, label = "Cefoperazone\nand Sulbactam", hjust = 0, size = 4, color = "black", nudge_x = 0.25) +
+    annotate("text", x = 3, y = max(data_long$Value, na.rm = TRUE) * 0.5, label = "Pus culture:\nCandida albicans", hjust = 0, size = 4, color = "black", nudge_x = 0.25) +
+    pub_theme
+  
+#fig 2
+  # Load required libraries
+  library(ggplot2)
+  library(dplyr)
+  
+  gantt_data <- tribble(
+    ~Task, ~Start, ~End,   ~Category,
+    "Admission/Discharge", 1,      14,     "Admission & Discharge",
+    "Surgery", 1,      1.5,    "Surgery & Rescue",
+    "Rescue", 1,      1.5,    "Surgery & Rescue",
+    "Transfer", 1,      1.5,    "Transfer",
+    "Mechanical Ventilation", 1,    11,     "Mechanical Ventilation",
+    "Vasopressor use", 1,  2,      "Vasoactive Drugs",
+    "ICU Stay", 1,  14,     "ICU",
+    "RRT", 1,  14,     "CRRT"
+  ) %>%
+    mutate(Task_num = as.numeric(factor(Task)))
+  
+  colors <- c("#4CAF50", "#FF9800", "#E91E63", "#9C27B0", "#2196F3", "#00BCD4", "#009688", "#FF5722")
+  
+  gantt_plot <- ggplot(gantt_data, aes(xmin = Start, xmax = End, ymin = Task_num - 0.45, ymax = Task_num + 0.45, fill = Category)) +
+    geom_rect(color = colors) +
+    scale_x_continuous(name = "Time (Day)", limits = c(1, 14), breaks = seq(1, 14, by = 1)) +
+    scale_y_continuous(name = "", breaks = gantt_data$Task_num, labels = gantt_data$Task, limits = c(0.5, nrow(gantt_data) + 0.5)) +
+    scale_fill_manual(values = colors) +
+    labs(title = "Patient Treatment Timeline") +
+    theme_minimal() +
+    theme(legend.title = element_blank())
+  
+  gantt_plot
+  
+  
+  ##画图0623
+  dat=read.csv("C:/Users/lxqji/OneDrive/R/数据库文章/基线画图.csv")
+  table(dat$ageCat)
+  dat$ageCat=ifelse(dat$ageCat=="-90,110","(90,110)",dat$ageCat)
+  dat$ageCat=ifelse(dat$ageCat=="(10,19)","(18,19) ",dat$ageCat)
+  
+  dat$hos_stay[is.na(dat$hos_stay)] <-20
+  
+  for(i in 4:6) 
+  {  q99=quantile(dat[,i],0.95)
+  dat[i][dat[i]>q99]=q99}
+  #min 循环
+  for(i in 4:6) 
+  {  q1=quantile(dat[,i],0.01)
+  dat[i][dat[i]<q1]=q1}
+  # 读取数据
+  data <- dat
+  # 准备数据：将数据转换为长格式，这样可以更容易地在一个图形中绘制多个变量
+  long_data <- data %>%
+    gather(key = "variable", value = "value", ICUstay, hos_stay, MVtime) %>%
+    mutate(variable = recode(variable,
+                             ICUstay = "ICU Stay Duration",
+                             hos_stay = "Hospital Stay Duration",
+                             MVtime = "Mechanical Ventilation Duration"))
+  
+
+  combined_boxplot <- ggplot(long_data, aes(x = gender, y = value, fill = gender)) +
+    geom_boxplot() +
+    facet_wrap(~ variable, scales = "free_y", ncol = 3) +
+    scale_fill_manual(values = c("Female" = "hotpink3", "male" = "dodgerblue4")) +
+    labs(title = "Comparison of Different Time Durations by Gender",
+         x = "Gender",
+         y = "Duration (days)") +
+    theme_minimal(base_size = 14) +
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position = "none",
+          strip.background = element_blank(),
+          strip.text = element_text(size = 12))
+  combined_boxplot
+
+
+  ggsave("combined_boxplot.png", combined_boxplot, width = 10, height = 4, dpi = 300)
+  png_image <- image_read("combined_boxplot.png")
+  image_write(png_image, "combined_boxplot.tiff", format = "tiff", density = "300x300")
+  
+  
+  age_gender_count_plot <- ggplot(data, aes(x = ageCat, fill = gender)) +
+    geom_bar(position = "stack") +
+    labs(title = "Number of Patients by Age Category and Gender",
+         x = "Age Category",
+         y = "Number of Patients") +
+    theme_minimal(base_size = 14) +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  ggsave("age_gender_count_plot.png", age_gender_count_plot, width = 6, height = 4, dpi = 300)
+  png_image <- image_read("age_gender_count_plot.png")
+  image_write(png_image, "age_gender_count_plot.tiff", format = "tiff", density = "300x300")
+
+  
+
